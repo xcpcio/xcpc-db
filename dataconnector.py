@@ -1,5 +1,6 @@
 import mysql.connector
 import unicodedata
+from competition_result import Result
 
 class XCPCRatingDataConnector:
     dataSource = None
@@ -72,6 +73,12 @@ class XCPCRatingDataConnector:
             team_members_str += x
         return team_members_str
     
+    def __validateCompetition(self, competition_id):
+        comp = self.getCompetition(competition_id)
+        if comp == None:
+            raise Exception(
+                "No competition with id %d exists. Be sure to create the competition before inserting results of it." % competition_id)
+
     # 获得一个学校某个指定队员组成的队伍编号。队员用一个可以被遍历的玩意儿塞进来就行，别的不需要处理了，交由这个函数统一处理
     # 返回单个id，因为默认三个人名一样、在一个学校的一个队只会有特么的唯一一个id
     # 如果以后有变化再说吧（紫鲨了
@@ -124,7 +131,7 @@ class XCPCRatingDataConnector:
         sql = "INSERT INTO results (competition_id, team_id, rank, school_rank, prize, is_official) VALUES (%d, %d, %d, %d, \"%s\", %d)" % (competition_id, team_id, rank, school_rank, prize, is_official)
         return self.__insert(sql)
     
-    def addResult(self, school, members, competition_id, rank, is_official, school_rank = None, prize = None):
+    def addResult(self, school, team_name, members, competition_id, rank, is_official, school_rank = None, prize = None, validate = True):
         # 最终超级导入函数
         # 我也不知道会发生什么……
         
@@ -136,12 +143,32 @@ class XCPCRatingDataConnector:
         # try to find teams
         team_id = self.findTeam(school_id, members)
         if team_id == -1:
-            team_id = self.findTeam(school_id, members)
+            team_id = self.insertTeam(school_id, team_name, members)
+
+        if validate:
+            self.__validateCompetition(competition_id)
         
         # 考虑到一般来说competition_id 都不会去找，就自己填吧
         
         return self.insertResult(competition_id, team_id, rank, is_official, school_rank, prize)
         
+    def importResult(self, result, validate = True):
+        # 最终超级导入函数 wrapper
+        return self.addResult(result.school, result.team_name, result.members, result.competition_id, result.rank, result.is_official, result.school_rank, result.prize, validate)
+
+    def importResultBatch(self, results):
+        competition_id = results[0].competition_id
+        if competition_id == None:
+            raise Exception("Competition id not provided!")
+        
+        for x in results:
+            if x.competition_id != competition_id:
+                raise Exception("Competition id not match!")
+            
+        self.__validateCompetition(competition_id)
+        # 批量导入
+        for x in results:
+            print(self.importResult(x, validate = False))
         
 test = XCPCRatingDataConnector("sh-cynosdbmysql-grp-51uynye4.sql.tencentcdb.com", 22347, "root", "f70v655V9kMv0j2jUz")
 #print(test.findSchool("测试学校"))
@@ -151,4 +178,8 @@ test = XCPCRatingDataConnector("sh-cynosdbmysql-grp-51uynye4.sql.tencentcdb.com"
 #print(test.insertTeam(1, "测试队伍", ["黄文瀚", "倪昊斌", "刘严培"]))
 #print(test.insertSchool("测试学校"))
 #print(test.insertCompetition(1999, 1, "测试比赛"))
-print(test.addResult("测试学校", ["倪昊斌", "刘严培", "黄文瀚"], 1, 1, True, 1, "超级冠军"))
+print(test.addResult("测试学校", "测试队伍", ["倪昊斌", "刘严培", "黄文瀚"], 1, 1, True, 1, "超级冠军"))
+test.importResultBatch([
+    Result("测试学校", "测试队伍", ["倪昊斌", "刘严培", "黄文瀚"], 1, 1, True, 1, "超级冠军"),
+    Result("测试学校", "测试队伍", ["倪昊斌", "刘严培", "黄文瀚"], 1, 1, True, 1, "超级冠军"),
+    Result("测试学校", "测试队伍", ["倪昊斌", "刘严培", "黄文瀚"], 1, 1, True, 1, "超级冠军")])
