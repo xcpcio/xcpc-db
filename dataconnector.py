@@ -1,6 +1,6 @@
 import mysql.connector
 import unicodedata
-from competition_result import Result
+from entities import *
 
 class XCPCRatingDataConnector:
     dataSource = None
