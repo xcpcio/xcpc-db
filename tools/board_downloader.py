@@ -17,7 +17,9 @@ skip_validation = False
 
 # %%
 def fetch_ranklist(season, site):
+    print('Fetching Ranklist From XCPC Board...')
     uri = template_ranklist_uri.format(season, site)
+    print(uri)
     driver = webdriver.Chrome()
     driver.get(uri)
     time.sleep(2)
@@ -41,8 +43,10 @@ def fetch_ranklist(season, site):
 
 # %%
 def fetch_teams(season, site):
+    print('Fetching Teams From XCPC Board...')
     now_ticks = int(time.time())
     uri = template_teams_uri.format(season, site, now_ticks)
+    print(uri)
     response = requests.get(uri)
     if response.status_code != 200:
         print(response)
@@ -57,7 +61,7 @@ def export_board(export_path, season, site):
     ranlist = fetch_ranklist(season, site)
     if force_mode and not os.path.exists(export_path):
         os.makedirs(export_path)
-        print('Created Output Path: {}'.format(ranklist_path))
+        print('Created Output Path: {}'.format(export_path))
         
     with open(ranklist_path, 'w', encoding='utf-8') as f:
         f.write(ranlist)
@@ -71,7 +75,7 @@ def export_board(export_path, season, site):
     if skip_validation:
         return
     
-    competition_name, results = load_from_xcpc_board_offline(ranklist_path, teams_path)
+    competition_name, results, error_list = load_from_xcpc_board_offline(ranklist_path, teams_path, safe_mode=True)
     print(competition_name)
 
     print('Team count: {}'.format(len(results)))
@@ -82,6 +86,7 @@ def export_board(export_path, season, site):
     if results[0].members is None or len(results[0].members) == 0:
         issues.append('Empty Member Lists')
 
+    issues = issues + error_list
     if len(issues) > 0:
         print('-----Issue Found-----')
         for issue in issues:

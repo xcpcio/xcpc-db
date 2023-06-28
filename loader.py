@@ -35,7 +35,7 @@ def load_teams_data(path):
     return teams
 
 # %%
-def load_from_xcpc_board_offline(ranklist_json_path, teams_json_path):
+def load_from_xcpc_board_offline(ranklist_json_path, teams_json_path, safe_mode=False):
     # 加载榜单
     # 从XCPC Board导出的榜单json文件
     # https://board.xcpcio.com/icpc/47th/xian?type=%E5%AF%BC%E5%87%BA%E6%A6%9C%E5%8D%95
@@ -45,10 +45,20 @@ def load_from_xcpc_board_offline(ranklist_json_path, teams_json_path):
     # XCPC teams endpoint返回的json response
     # https://board.xcpcio.com/data//icpc/47th/xian/team.json?t=1687781690
     teams = load_teams_data(teams_json_path)
+    error_list = []
     for result in results:
-        result.is_official = teams[(
-            result.school, result.team_name)] == TeamType.Official
-    return [competition_name, results]
+        
+        try:
+            result.is_official = teams[(
+                result.school, result.team_name)] == TeamType.Official
+        except KeyError as error:
+            if safe_mode:
+                result.is_official = False
+                error_list.append('Cannot Determine Team Type: {} {}'.format(result.school, result.team_name))
+            else:
+                raise error
+
+    return [competition_name, results, error_list]
 
 
 
